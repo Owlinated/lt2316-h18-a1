@@ -23,7 +23,7 @@ class DecisionTree:
             self.root = load(load_from)
 
     @staticmethod
-    def build_tree(X: DataFrame, y: Series, attributes: List[str], value: object = None) -> BaseNode:
+    def __build_tree(X: DataFrame, y: Series, attributes: List[str], value: object = None) -> BaseNode:
         assert X.shape[0] == y.shape[0] and X.shape[0] > 0
 
         # Check for leaf: Only one class remains
@@ -65,11 +65,11 @@ class DecisionTree:
             if child_X.size == 0:
                 children.append(Leaf(child_value, popular_class))
             else:
-                children.append(DecisionTree.build_tree(child_X, child_y, child_attributes, child_value))
+                children.append(DecisionTree.__build_tree(child_X, child_y, child_attributes, child_value))
 
         return Node(value, attribute, children, popular_class)
 
-    def train(self, X: DataFrame, y: Series, attrs: List[str], prune: bool=False) -> None:
+    def train(self, X: DataFrame, y: Series, attrs: List[str], prune: bool = False) -> None:
         """
         Uses ID3 to train a decision tree on the supplied data.
         :param X: Training data (to classify)
@@ -77,7 +77,55 @@ class DecisionTree:
         :param attrs: Names of attributes in X
         :param prune: Indicates whether the tree should be pruned
         """
-        self.root = DecisionTree.build_tree(X, y, attrs)
+        self.root = DecisionTree.__build_tree(X, y, attrs)
+
+    def __prune(self, X: DataFrame, y: Series, node: BaseNode) -> bool:
+        """
+        Recursively try to prune nodes. If they do not affect accuracy keep the change.
+        :param X: Set for testing accuracy
+        :param y: Labels for testing accuracy
+        :param node: The current node
+        :return: Value indicating whether node has been pruned
+        """
+        if isinstance(node, Leaf):
+            return True
+
+        assert isinstance(node, Node)
+        if all(map(lambda child: self.__prune(X, y, child), node.children)):
+            pre_accuracy = accuracy_score(y, Series(self.predict(X)))
+            node.pruned = True
+            post_accuracy = accuracy_score(y, Series(self.predict(X)))
+
+            if post_accuracy >= pre_accuracy:
+                return True
+
+            node.pruned = False
+            return False
+
+    def __rebuild(self, node: BaseNode):
+        """
+        Replace pruned nodes with leafs
+        :param node: The current node
+        """
+        if isinstance(node, Leaf):
+            return
+
+        assert isinstance(node, Node)
+        if node == self.root and node.pruned:
+            self.root = Leaf(node.value, node.fallback_label)
+
+        pruned_children = list(filter(lambda child: isinstance(child, Node) and child.pruned, node.children))
+        node.children = list(filter(lambda child: child not in pruned_children, node.children)) \
+            + list(map(lambda child: Leaf(child.value, child.fallback_label), pruned_children))
+
+    def prune(self, X: DataFrame, y: Series) -> None:
+        """
+        :param X: Set for testing accuracy
+        :param y: Labels for testing accuracy
+        Prune nodes, than replace pruned nodes with leafs
+        """
+        self.__prune(X, y, self.root)
+        self.__rebuild(self.root)
 
     def predict(self, instance: DataFrame) -> Iterator[object]:
         """
@@ -89,6 +137,10 @@ class DecisionTree:
         for index, row in instance.iterrows():
             current_node = self.root
             while isinstance(current_node, Node):
+                # Stop early if the node has been pruned
+                if current_node.pruned:
+                    break
+
                 next_node = next(filter(
                     lambda child: child.value == row[current_node.attribute],
                     current_node.children), None)
@@ -103,11 +155,11 @@ class DecisionTree:
                 # Reached leaf, using stored label
                 yield current_node.label
             else:
-                # Encountered unknown value, using fallback label
+                # Encountered unknown value or pruned node, using fallback label
                 assert isinstance(current_node, Node)
                 yield current_node.fallback_label
 
-    def test(self, X: DataFrame, y: Series, display: bool=False) -> dict:
+    def test(self, X: DataFrame, y: Series, display: bool = False) -> dict:
         """
         Runs statistical tests on data,
         :param X: Test data

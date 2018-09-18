@@ -23,6 +23,7 @@ class Node(BaseNode):
     attribute: object = None
     children: List[BaseNode] = None
     fallback_label: object = None
+    pruned: bool = False
 
     def __init__(self, value: object, attribute: object, children: List[BaseNode], fallback_label: object):
         super(Node, self).__init__(value)
