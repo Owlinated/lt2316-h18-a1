@@ -1,5 +1,5 @@
 # Module file for implementation of ID3 algorithm.
-
+from pickle import dump, load
 from typing import IO, List, Union, Iterator
 from pandas import DataFrame, Series
 from pandas.core.groupby import GroupBy
@@ -10,7 +10,7 @@ from node import BaseNode, Leaf, Node
 class DecisionTree:
     root: BaseNode = None
 
-    def __init__(self, load_from: Union[str, IO, None] = None):
+    def __init__(self, load_from: Union[IO, None] = None):
         """
         Initializes empty decision tree.
         :param load_from: Restore previously saved instance from file.
@@ -18,6 +18,7 @@ class DecisionTree:
         print("Initializing classifier.")
         if load_from is not None:
             print("Loading from file object.")
+            self.root = load(load_from)
 
     @staticmethod
     def build_tree(X: DataFrame, y: Series, attributes: List[str], value: object = None) -> BaseNode:
@@ -107,9 +108,9 @@ class DecisionTree:
         else:
             return self.root.to_string()
 
-
-    def save(self, output: Union[str, IO]) -> None:
-        # 'output' is a file *object* (NOT necessarily a filename)
-        # to which you will save the model in a manner that it can be
-        # loaded into a new DecisionTree instance.
-        pass
+    def save(self, output: IO) -> None:
+        """
+        Dumps decision tree to a file. This file may later be loaded as a new tree.
+        :param output: File to write decision tree into
+        """
+        dump(self.root, output)
