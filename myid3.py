@@ -1,4 +1,5 @@
 # Module file for implementation of ID3 algorithm.
+from math import log2
 from pickle import dump, load
 from typing import IO, List, Union, Iterator
 from pandas import DataFrame, Series
@@ -27,18 +28,33 @@ class DecisionTree:
 
         # Check for leaf: Only one class remains
         class_groups: GroupBy = y.groupby(y)
+        classes = list(class_groups.groups.keys())
         if len(class_groups.groups) == 1:
-            return Leaf(value, list(class_groups.groups.keys())[0])
+            return Leaf(value, classes[0])
 
         # Check for no attributes left
         popular_class = sorted(class_groups, key=lambda key_value: key_value[1].size)[-1][0]
         if not any(True for _ in attributes):
             return Leaf(value, popular_class)
 
-        # Find lowest entropy attribute
-        # TODO sort attributes by entropy
-        attribute = attributes[0]
-        child_attributes = attributes[1:]
+        def entropy(set: Series) -> float:
+            """
+            Measures the uncertainty in set
+            """
+            probs = map(lambda label: len(list(filter(lambda entry: entry == label, set))) / set.size, classes)
+            return -sum(map(lambda prob: prob * log2(prob) if prob > 0 else 0, probs))
+
+        def gain(attr: str) -> float:
+            """
+            Measures the information gain of an attribute
+            """
+            subsets = map(lambda val: y[X[attr] == val], set(X[attr]))
+            return entropy(y) - sum(map(lambda subset: subset.size / X.size * entropy(subset), subsets))
+
+        # Find highest information gain attribute
+        attributes = sorted(attributes, key=gain)
+        attribute = attributes[-1]
+        child_attributes = attributes[:-1]
 
         # Create children for all values
         children: List[BaseNode] = []
