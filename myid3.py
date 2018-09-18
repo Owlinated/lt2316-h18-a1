@@ -3,6 +3,7 @@ from pickle import dump, load
 from typing import IO, List, Union, Iterator
 from pandas import DataFrame, Series
 from pandas.core.groupby import GroupBy
+from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score, confusion_matrix
 
 from node import BaseNode, Leaf, Node
 
@@ -89,11 +90,11 @@ class DecisionTree:
         """
         predictions = Series(self.predict(X))
 
-        result = {'precision': None,
-                  'recall': None,
-                  'accuracy': None,
-                  'F1': None,
-                  'confusion-matrix': None}
+        result = {'precision': precision_score(y, predictions, average=None),
+                  'recall': recall_score(y, predictions, average=None),
+                  'accuracy': accuracy_score(y, predictions),
+                  'F1': f1_score(y, predictions, average=None),
+                  'confusion-matrix': confusion_matrix(y, predictions)}
         if display:
             print(result)
         return result
