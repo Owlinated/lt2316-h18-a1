@@ -2,7 +2,7 @@
 from math import log2
 from pickle import dump, load
 from typing import IO, List, Union, Iterator
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, concat
 from pandas.core.groupby import GroupBy
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score, confusion_matrix
 
@@ -67,7 +67,7 @@ class DecisionTree:
             else:
                 children.append(DecisionTree.build_tree(child_X, child_y, child_attributes, child_value))
 
-        return Node(value, attribute, children)
+        return Node(value, attribute, children, popular_class)
 
     def train(self, X: DataFrame, y: Series, attrs: List[str], prune: bool=False) -> None:
         """
@@ -89,12 +89,23 @@ class DecisionTree:
         for index, row in instance.iterrows():
             current_node = self.root
             while isinstance(current_node, Node):
-                current_node = filter(
+                next_node = next(filter(
                     lambda child: child.value == row[current_node.attribute],
-                    current_node.children).__next__()
+                    current_node.children), None)
 
-            assert isinstance(current_node, Leaf)
-            yield current_node.label
+                # Could not find value, break loop early
+                if next_node is None:
+                    break
+
+                current_node = next_node
+
+            if isinstance(current_node, Leaf):
+                # Reached leaf, using stored label
+                yield current_node.label
+            else:
+                # Encountered unknown value, using fallback label
+                assert isinstance(current_node, Node)
+                yield current_node.fallback_label
 
     def test(self, X: DataFrame, y: Series, display: bool=False) -> dict:
         """
