@@ -4,13 +4,11 @@
 # rather copy it and make your own tests or write tests afresh.
 # We can/will test your code using other data.
 
-import os, sys
-import pandas as pd
-import numpy as np
+from pandas import read_csv
 from myid3 import DecisionTree # What you will write in the myid3.py file.
 
 # Loading the data.
-balancedata = pd.read_csv("balance-scale.data", header=None)
+balancedata = read_csv("balance-scale.data", header=None)
 balancedata = balancedata.sample(frac=1).reset_index(drop=True) #shuffla shuffla
 
 # Making the data usable.
