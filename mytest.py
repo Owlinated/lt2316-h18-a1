@@ -7,12 +7,15 @@ from myid3 import DecisionTree
 def test_set(train_X: DataFrame, train_y: Series, test_X: DataFrame, test_y: Series, print_model: bool):
     tree = DecisionTree()
     tree.train(train_X, train_y, list(train_X))
+
     if print_model:
         print("\n### Model:")
         print(tree)
 
+    tree.prune(train_X, train_y)
+
+    if print_model:
         print("\n### Pruned Model:")
-        tree.prune(train_X, train_y)
         print(tree)
 
     print("\n### Test:")
@@ -43,10 +46,15 @@ def test_file(file: str, print_model: bool):
 
 
 def test_all():
+    # This model is too large to be easily readable, don't print it
     for file in ["balance-scale.data"]:
         test_file(file, False)
 
-    for file in ["easy.data", "impossible.data"]:
+    # Print these smaller models
+    # easy.data, contains an attribute att_a which decides between classes
+    # impossible.data, has no correlation between attribute values and classes
+    # prunable.data, is like easy but has an outlier to allow pruning
+    for file in ["easy.data", "impossible.data", "prunable.data"]:
         test_file(file, True)
 
 
