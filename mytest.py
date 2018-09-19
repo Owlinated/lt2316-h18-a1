@@ -54,7 +54,7 @@ def test_all():
     # easy.data, contains an attribute att_a which decides between classes
     # impossible.data, has no correlation between attribute values and classes
     # prunable.data, is like easy but has an outlier to allow pruning
-    for file in ["easy.data", "impossible.data", "prunable.data"]:
+    for file in ["easy.data", "impossible.data", "prunable.data", "easy_continuous.data"]:
         test_file(file, True)
 
 
