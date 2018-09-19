@@ -6,6 +6,7 @@ from pandas import DataFrame, Series, concat
 from pandas.core.groupby import GroupBy
 from sklearn.metrics import precision_score, recall_score, accuracy_score, f1_score, confusion_matrix
 
+from matcher import DiscreteMatcher
 from node import BaseNode, Leaf, Node
 
 
@@ -30,12 +31,12 @@ class DecisionTree:
         class_groups: GroupBy = y.groupby(y)
         classes = list(class_groups.groups.keys())
         if len(class_groups.groups) == 1:
-            return Leaf(value, classes[0])
+            return Leaf(DiscreteMatcher(value), classes[0])
 
         # Check for no attributes left
         popular_class = sorted(class_groups, key=lambda key_value: key_value[1].size)[-1][0]
         if not any(True for _ in attributes):
-            return Leaf(value, popular_class)
+            return Leaf(DiscreteMatcher(value), popular_class)
 
         def entropy(set: Series) -> float:
             """
@@ -63,11 +64,11 @@ class DecisionTree:
             child_X = X[child_mask]
             child_y = y[child_mask]
             if child_X.size == 0:
-                children.append(Leaf(child_value, popular_class))
+                children.append(Leaf(DiscreteMatcher(child_value), popular_class))
             else:
                 children.append(DecisionTree.__build_tree(child_X, child_y, child_attributes, child_value))
 
-        return Node(value, attribute, children, popular_class)
+        return Node(DiscreteMatcher(value), attribute, children, popular_class)
 
     def train(self, X: DataFrame, y: Series, attrs: List[str], prune: bool = False) -> None:
         """
@@ -114,11 +115,11 @@ class DecisionTree:
 
         assert isinstance(node, Node)
         if node == self.root and node.pruned:
-            self.root = Leaf(node.value, node.fallback_label)
+            self.root = Leaf(node.matcher, node.fallback_label)
 
         pruned_children = list(filter(lambda child: isinstance(child, Node) and child.pruned, node.children))
         node.children = list(filter(lambda child: child not in pruned_children, node.children)) \
-            + list(map(lambda child: Leaf(child.value, child.fallback_label), pruned_children))
+            + list(map(lambda child: Leaf(child.matcher, child.fallback_label), pruned_children))
 
     def prune(self, X: DataFrame, y: Series) -> None:
         """
@@ -144,7 +145,7 @@ class DecisionTree:
                     break
 
                 next_node = next(filter(
-                    lambda child: child.value == row[current_node.attribute],
+                    lambda child: child.matcher.is_match(row[current_node.attribute]),
                     current_node.children), None)
 
                 # Could not find value, break loop early

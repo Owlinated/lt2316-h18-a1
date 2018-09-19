@@ -1,15 +1,17 @@
 from abc import abstractmethod
 from typing import List
 
+from matcher import BaseMatcher
+
 
 class BaseNode:
     """
-    Base class for nodes, stores value that leads to this node.
+    Base class for nodes, stores function to decide if value matches this node.
     """
-    value: object = None
+    matcher: BaseMatcher = None
 
-    def __init__(self, value: object):
-        self.value = value
+    def __init__(self, matcher: BaseMatcher):
+        self.matcher = matcher
 
     @abstractmethod
     def to_string(self, indent: int = 0) -> str:
@@ -25,15 +27,15 @@ class Node(BaseNode):
     fallback_label: object = None
     pruned: bool = False
 
-    def __init__(self, value: object, attribute: object, children: List[BaseNode], fallback_label: object):
-        super(Node, self).__init__(value)
+    def __init__(self, matcher: BaseMatcher, attribute: object, children: List[BaseNode], fallback_label: object):
+        super(Node, self).__init__(matcher)
         self.attribute = attribute
         self.children = children
         self.fallback_label = fallback_label
 
     def to_string(self, indent: int = 0) -> str:
         result = "{}{} -> switch on {}, fallback to {}"\
-            .format("\t" * indent, self.value, self.attribute, self.fallback_label)
+            .format("\t" * indent, self.matcher, self.attribute, self.fallback_label)
         child_results = map(lambda child: child.to_string(indent + 1), self.children)
         return "\n".join([result, *child_results])
 
@@ -44,9 +46,9 @@ class Leaf(BaseNode):
     """
     label: object = None
 
-    def __init__(self, value: object, label: object):
-        super(Leaf, self).__init__(value)
+    def __init__(self, matcher: BaseMatcher, label: object):
+        super(Leaf, self).__init__(matcher)
         self.label = label
 
     def to_string(self, indent: int = 0) -> str:
-        return "{}{} -> {}".format("\t" * indent, self.value, self.label)
+        return "{}{} -> {}".format("\t" * indent, self.matcher, self.label)
