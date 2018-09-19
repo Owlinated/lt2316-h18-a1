@@ -78,6 +78,8 @@ class DecisionTree:
         :param prune: Indicates whether the tree should be pruned
         """
         self.root = DecisionTree.__build_tree(X, y, attrs)
+        if prune:
+            self.prune(X, y)
 
     def __prune(self, X: DataFrame, y: Series, node: BaseNode) -> bool:
         """
