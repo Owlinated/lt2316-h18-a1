@@ -28,6 +28,14 @@ class DecisionTree:
 
     @staticmethod
     def __build_tree(X: DataFrame, y: Series, attributes: List[str], matcher: BaseMatcher = None) -> BaseNode:
+        """
+        Recursively builds a tree by greedily creating nodes based on the attribute with the highest information gain.
+        :param X: The remaining values
+        :param y: Classes corresponding to X
+        :param attributes: The remaining attributes to choose from
+        :param matcher: Matcher that checks the parent nodes attribute
+        :return: Root of subtree that classifies values based on the remaining attributes
+        """
         assert X.shape[0] == y.shape[0] and X.shape[0] > 0
 
         # Check for leaf: Only one class remains
@@ -119,8 +127,8 @@ class DecisionTree:
     def train(self, X: DataFrame, y: Series, attrs: List[str], prune: bool = False) -> None:
         """
         Uses ID3 to train a decision tree on the supplied data.
-        :param X: Training data (to classify)
-        :param y: Classes of training data
+        :param X: Training data
+        :param y: Classes corresponding to X
         :param attrs: Names of attributes in X
         :param prune: Indicates whether the tree should be pruned
         """
@@ -130,9 +138,9 @@ class DecisionTree:
 
     def __prune(self, X: DataFrame, y: Series, node: BaseNode) -> bool:
         """
-        Recursively try to prune nodes. If they do not affect accuracy keep the change.
-        :param X: Set for testing accuracy
-        :param y: Labels for testing accuracy
+        Recursively tries to prune nodes. Keeps the change, if they do not affect accuracy.
+        :param X: Data for testing accuracy
+        :param y: Labels corresponding to X
         :param node: The current node
         :return: Value indicating whether node has been pruned
         """
@@ -153,7 +161,7 @@ class DecisionTree:
 
     def __rebuild(self, node: BaseNode):
         """
-        Replace pruned nodes with leafs
+        Replaces pruned nodes with leafs.
         :param node: The current node
         """
         if isinstance(node, Leaf):
@@ -169,9 +177,9 @@ class DecisionTree:
 
     def prune(self, X: DataFrame, y: Series) -> None:
         """
+        Prunes nodes, than replace pruned nodes with leafs
         :param X: Set for testing accuracy
         :param y: Labels for testing accuracy
-        Prune nodes, than replace pruned nodes with leafs
         """
         self.__prune(X, y, self.root)
         self.__rebuild(self.root)

@@ -51,9 +51,10 @@ def test_all():
         test_file(file, False)
 
     # Print these smaller models
-    # easy.data, contains an attribute att_a which decides between classes
+    # easy.data, contains an attribute att_b which decides between classes
     # impossible.data, has no correlation between attribute values and classes
     # prunable.data, is like easy but has an outlier to allow pruning
+    # easy_continuous.data contains a continuous attribute att_b which decides between classes
     for file in ["easy.data", "impossible.data", "prunable.data", "easy_continuous.data"]:
         test_file(file, True)
 
