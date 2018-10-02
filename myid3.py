@@ -136,53 +136,14 @@ class DecisionTree:
         if prune:
             self.prune(X, y)
 
-    def __prune(self, X: DataFrame, y: Series, node: BaseNode) -> bool:
-        """
-        Recursively tries to prune nodes. Keeps the change, if they do not affect accuracy.
-        :param X: Data for testing accuracy
-        :param y: Labels corresponding to X
-        :param node: The current node
-        :return: Value indicating whether node has been pruned
-        """
-        if isinstance(node, Leaf):
-            return True
-
-        assert isinstance(node, Node)
-        if all(map(lambda child: self.__prune(X, y, child), node.children)):
-            pre_accuracy = accuracy_score(y, Series(self.predict(X)))
-            node.pruned = True
-            post_accuracy = accuracy_score(y, Series(self.predict(X)))
-
-            if post_accuracy >= pre_accuracy:
-                return True
-
-            node.pruned = False
-            return False
-
-    def __rebuild(self, node: BaseNode):
-        """
-        Replaces pruned nodes with leafs.
-        :param node: The current node
-        """
-        if isinstance(node, Leaf):
-            return
-
-        assert isinstance(node, Node)
-        if node == self.root and node.pruned:
-            self.root = Leaf(node.matcher, node.fallback_label)
-
-        pruned_children = list(filter(lambda child: isinstance(child, Node) and child.pruned, node.children))
-        node.children = list(filter(lambda child: child not in pruned_children, node.children)) \
-            + list(map(lambda child: Leaf(child.matcher, child.fallback_label), pruned_children))
-
     def prune(self, X: DataFrame, y: Series) -> None:
         """
         Prunes nodes, than replace pruned nodes with leafs
         :param X: Set for testing accuracy
         :param y: Labels for testing accuracy
         """
-        self.__prune(X, y, self.root)
-        self.__rebuild(self.root)
+        self.root.mark_pruned(lambda: accuracy_score(y, Series(self.predict(X))))
+        self.root = self.root.get_pruned()
 
     def predict(self, instance: DataFrame) -> Iterator[object]:
         """
@@ -193,11 +154,7 @@ class DecisionTree:
         """
         for index, row in instance.iterrows():
             current_node = self.root
-            while isinstance(current_node, Node):
-                # Stop early if the node has been pruned
-                if current_node.pruned:
-                    break
-
+            while not current_node.is_leaf():
                 next_node = next(filter(
                     lambda child: child.matcher.is_match(row[current_node.attribute]),
                     current_node.children), None)
@@ -208,13 +165,7 @@ class DecisionTree:
 
                 current_node = next_node
 
-            if isinstance(current_node, Leaf):
-                # Reached leaf, using stored label
-                yield current_node.label
-            else:
-                # Encountered unknown value or pruned node, using fallback label
-                assert isinstance(current_node, Node)
-                yield current_node.fallback_label
+            yield current_node.get_label()
 
     def test(self, X: DataFrame, y: Series, display: bool = False) -> dict:
         """

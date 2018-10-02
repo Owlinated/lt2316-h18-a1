@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List
+from typing import List, Callable
 
 from matcher import BaseMatcher
 
@@ -12,6 +12,39 @@ class BaseNode:
 
     def __init__(self, matcher: BaseMatcher):
         self.matcher = matcher
+
+    @abstractmethod
+    def is_leaf(self) -> bool:
+        """
+        Gets a value indicating whether the current node is a leaf or a pruned node.
+        :return:
+        """
+        pass
+
+    @abstractmethod
+    def get_label(self) -> str:
+        """
+        Gets the class label of the current node.
+        """
+        pass
+
+    @abstractmethod
+    def mark_pruned(self, accuracy: Callable[[], float]) -> bool:
+        """
+        Recursively tries to prune nodes. Keeps the change, if they do not affect accuracy.
+        :param accuracy: Function to determine tree's accuracy
+        :return: Value indicating whether node has been pruned
+        """
+        pass
+
+    @abstractmethod
+    def get_pruned(self) -> "BaseNode":
+        """
+        Simplifies tree by replacing pruned nodes with leafs.
+        This is not a pure function!
+        :return: Root of simplified tree
+        """
+        pass
 
     @abstractmethod
     def to_string(self, indent: int = 0) -> str:
@@ -33,6 +66,29 @@ class Node(BaseNode):
         self.children = children
         self.fallback_label = fallback_label
 
+    def is_leaf(self):
+        return self.pruned
+
+    def get_label(self):
+        return self.fallback_label
+
+    def mark_pruned(self, accuracy: Callable[[], float]) -> bool:
+        if all(map(lambda child: child.mark_pruned(accuracy), self.children)):
+            pre_accuracy = accuracy()
+            self.pruned = True
+            if accuracy() >= pre_accuracy:
+                return True
+
+        self.pruned = False
+        return False
+
+    def get_pruned(self) -> BaseNode:
+        if self.pruned:
+            return Leaf(self.matcher, self.fallback_label)
+
+        self.children = list(map(lambda child: child.get_pruned(), self.children))
+        return self
+
     def to_string(self, indent: int = 0) -> str:
         result = "{}{} -> switch on {}, fallback to {}"\
             .format("\t" * indent, self.matcher, self.attribute, self.fallback_label)
@@ -49,6 +105,18 @@ class Leaf(BaseNode):
     def __init__(self, matcher: BaseMatcher, label: object):
         super(Leaf, self).__init__(matcher)
         self.label = label
+
+    def is_leaf(self):
+        return True
+
+    def get_label(self):
+        return self.label
+
+    def mark_pruned(self, accuracy: Callable[[], float]) -> bool:
+        return True
+
+    def get_pruned(self) -> BaseNode:
+        return self
 
     def to_string(self, indent: int = 0) -> str:
         return "{}{} -> {}".format("\t" * indent, self.matcher, self.label)
