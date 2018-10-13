@@ -79,14 +79,13 @@ class DecisionTree:
             Measures the information gain based on the type of attribute
             """
             attr_type = X.dtypes[attr]
-            if attr_type == int64:
-                # Find highest gain achievable by splitting at all values
-                return discrete_gain(attr)
             if attr_type == float64:
                 # Find highest gain achievable with any threshold
                 thresholds = map(lambda value: 0.5 * (value[0] + value[1]), pairwise(sorted(set(X[attr]))))
                 return max(map(lambda threshold: continuous_gain(attr, threshold), thresholds))
-            raise ValueError("Unknown type of attribute: {}".format(attr_type))
+
+            # Find highest gain achievable by splitting at all values
+            return discrete_gain(attr)
 
         # Find highest information gain attribute
         attributes = sorted(attributes, key=attribute_gain)
@@ -97,11 +96,7 @@ class DecisionTree:
             """
             Generates matchers for the chosen attribute
             """
-            if X.dtypes[attribute] == int64:
-                # Create matchers for all values in discrete case
-                for child_value in set(X[attribute]):
-                    yield DiscreteMatcher(child_value)
-            else:
+            if X.dtypes[attribute] == float64:
                 # Find threshold with highest information gain
                 thresholds = map(lambda value: 0.5 * (value[0] + value[1]), pairwise(sorted(set(X[attribute]))))
                 threshold = sorted(thresholds, key=lambda threshold: continuous_gain(attribute, threshold))[-1]
@@ -109,6 +104,10 @@ class DecisionTree:
                 # Generate matchers for <= and > than threshold
                 for threshold_direction in [False, True]:
                     yield ContinuousMatcher(threshold, threshold_direction)
+            else:
+                # Create matchers for all values in discrete case
+                for child_value in set(X[attribute]):
+                    yield DiscreteMatcher(child_value)
 
         def match_to_node(matcher: BaseMatcher) -> BaseNode:
             """
